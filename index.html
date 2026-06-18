@@ -1,0 +1,220 @@
+
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ULTRA JACKPOT V7 - MULTI MODE</title>
+    <style>
+        :root { --gold: #ffd700; --green: #00ff66; --red: #ff3131; --bg: #000; --cyan: #00e5ff; }
+        body, html { margin: 0; padding: 0; height: 100%; background: #000; color: white; font-family: sans-serif; display: flex; justify-content: center; align-items: center; }
+        .container { background: #111; padding: 25px; border-radius: 25px; border: 2px solid var(--gold); width: 95%; max-width: 380px; text-align: center; box-shadow: 0 0 30px rgba(255, 215, 0, 0.3); max-height: 95vh; overflow-y: auto; }
+        
+        /* ══ GAME MODE SWITCHER ══ */
+        .mode-container { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; background: #000; padding: 5px; border-radius: 12px; border: 1px solid #222; }
+        .mode-btn { background: #111; border: 1px solid #333; color: #888; padding: 10px; font-weight: bold; cursor: pointer; border-radius: 8px; transition: 0.3s; font-size: 12px; }
+        .mode-btn.active { border-color: var(--cyan); color: var(--cyan); background: rgba(0, 229, 255, 0.08); text-shadow: 0 0 5px var(--cyan); }
+        
+        .timer { font-size: 60px; font-weight: 900; color: var(--gold); margin: 5px 0; letter-spacing: 2px; }
+        .prediction-box { background: #1a1a1a; border-radius: 15px; padding: 15px; margin: 12px 0; border: 1px solid #333; }
+        .numbers { font-size: 38px; font-weight: bold; color: var(--green); letter-spacing: 5px; margin: 10px 0; text-shadow: 0 0 10px rgba(0, 255, 102, 0.4); }
+        .bs-text { font-size: 28px; font-weight: bold; text-transform: uppercase; letter-spacing: 3px; }
+        .status { font-size: 24px; margin-top: 10px; height: 35px; font-weight: bold; }
+        #login_screen input { width: 85%; padding: 15px; margin: 20px 0; border-radius: 12px; border: 1px solid var(--gold); background: #000; color: #fff; text-align: center; font-size: 18px; }
+        #login_screen button { width: 90%; padding: 15px; background: var(--gold); border: none; border-radius: 12px; font-weight: bold; cursor: pointer; color: #000; font-size: 18px; }
+        
+        /* ══ HISTORY UI ══ */
+        .history-box { background: #0c0c0c; border-radius: 15px; padding: 12px; margin-top: 15px; border: 1px solid #222; text-align: left; }
+        .history-title { font-size: 12px; color: var(--gold); font-weight: bold; text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid #222; padding-bottom: 5px; letter-spacing: 1px; text-align: center; }
+        .history-list { max-height: 140px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 2px; }
+        .history-item { display: flex; justify-content: space-between; font-size: 11px; background: rgba(255,255,255,0.02); padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.03); font-family: monospace; }
+        
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #111; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+<div id="login_screen" class="container">
+    <h2 style="color: var(--gold); letter-spacing: 2px;">PRIVATE HACK</h2>
+    <input type="text" id="pass_input" placeholder="ENTER PIN ">
+    <button onclick="checkAuth()">ACTIVATE HACK</button>
+</div>
+
+<div id="main_app" class="container" style="display: none;">
+    <!-- মোড সিলেকশন বাটন -->
+    <div class="mode-container">
+        <button id="btn30s" class="mode-btn active" onclick="switchMode('30S')">চুদলিংপং  30S</button>
+        <button id="btn1m" class="mode-btn" onclick="switchMode('1M')">চুদলিংপং  1M</button>
+    </div>
+
+    <div style="color: #666; font-size: 12px; font-weight: bold;" id="prd_text">PERIOD: SYNCING...</div>
+    <div id="timer" class="timer">00</div>
+
+    <div class="prediction-box">
+        <div style="color: #888; font-size: 14px; margin-bottom: 5px;">JACKPOT NUMBERS</div>
+        <div id="lucky_numbers" class="numbers">? ? ?</div>
+    </div>
+
+    <div class="prediction-box">
+        <div id="bs_prediction" class="bs-text">WAIT...</div>
+    </div>
+
+    <div id="status_text" class="status"></div>
+
+    <div class="history-box">
+        <div class="history-title">📊 মারা খাওয়ার  HISTORY</div>
+        <div id="history_log" class="history-list">
+            <div style="color: #555; text-align: center; font-size: 11px; padding: 10px;">Waiting for live sync...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const KEY = "FUCK";
+    let lastNumbers = [];
+    let lastBS = "";
+    let lastPeriod = "";
+    let currentMode = "30S"; // ডিফল্ট মোড ৩০ সেকেন্ড
+
+    // অফিশিয়াল ডাইরেক্ট লাইভ এপিআই লিস্টিং
+    const API_URLS = {
+        "30S": "https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=20",
+        "1M": "https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json?pageSize=20"
+    };
+
+    function checkAuth() {
+        if (document.getElementById('pass_input').value.trim() === KEY) {
+            document.getElementById('login_screen').style.display = 'none';
+            document.getElementById('main_app').style.display = 'block';
+            startBot();
+        } else { alert("Wrong PIN!"); }
+    }
+
+    // ওয়ান-ক্লিক মোড সুইচার লজিক
+    function switchMode(mode) {
+        if (currentMode === mode) return;
+        currentMode = mode;
+        lastPeriod = "";
+        lastBS = "";
+        lastNumbers = [];
+        
+        document.getElementById('btn30s').classList.toggle('active', mode === '30S');
+        document.getElementById('btn1m').classList.toggle('active', mode === '1M');
+        document.getElementById('history_log').innerHTML = '<div style="color: #555; text-align: center; font-size: 11px; padding: 10px;">Switching mode & syncing...</div>';
+        
+        analyze();
+    }
+
+    function startBot() {
+        setInterval(() => {
+            let s = new Date().getSeconds();
+            let rem = 30;
+            
+            // টাইমিং সাইকেল ক্যালকুলেশন (৩০ সেকেন্ড বনাম ১ মিনিট)
+            if (currentMode === "30S") {
+                rem = 30 - (s % 30);
+            } else {
+                rem = 60 - s;
+            }
+            
+            document.getElementById('timer').innerText = rem < 10 ? "0" + rem : rem;
+            
+            // নতুন রাউন্ড শুরু হওয়া মাত্র ডাটা আপডেট করবে
+            if (currentMode === "30S" && (rem === 29 || rem === 1)) {
+                analyze();
+            } else if (currentMode === "1M" && (rem === 59 || rem === 1)) {
+                analyze();
+            }
+        }, 1000);
+        analyze();
+    }
+
+    function updateHistoryLog(period, resultNum, resultBS, statusHtml) {
+        const historyLog = document.getElementById('history_log');
+        if (historyLog.innerHTML.includes("Waiting for live") || historyLog.innerHTML.includes("Switching mode")) {
+            historyLog.innerHTML = "";
+        }
+
+        const item = document.createElement('div');
+        item.className = 'history-item';
+        let bsColor = (resultBS === "BIG") ? "var(--gold)" : "var(--green)";
+        let displayPeriod = period.toString().slice(-4);
+        
+        item.innerHTML = `
+            <div style="color: #888;">[${currentMode} - ${displayPeriod}]</div>
+            <div style="color: #fff;">RES: <span style="color:${bsColor}">${resultNum} (${resultBS})</span></div>
+            <div>${statusHtml}</div>
+        `;
+        
+        historyLog.insertBefore(item, historyLog.firstChild);
+        if (historyLog.children.length > 20) {
+            historyLog.removeChild(historyLog.lastChild);
+        }
+    }
+
+    async function analyze() {
+        try {
+            // ডাইরেক্ট অফিসিয়াল এপিআই হিট (কোনো থার্ডপার্টি মিডিয়াম ছাড়া, তাই সিগনাল ১০০% রিয়েল আসবে)
+            const res = await fetch(API_URLS[currentMode], { method: "GET" });
+            const data = await res.json();
+            if (!data || !data.data || !data.data.list) return;
+
+            const list = data.data.list;
+            const lastRound = list[0];
+            const actualNum = parseInt(lastRound.number);
+            const actualBS = actualNum <= 4 ? "SMALL" : "BIG";
+            const currentRoundPeriodStr = lastRound.issueNumber.toString();
+
+            const statusEl = document.getElementById('status_text');
+            let roundStatusHtml = "";
+
+            if (lastPeriod.toString() === currentRoundPeriodStr) {
+                if (lastNumbers.includes(actualNum)) {
+                    roundStatusHtml = "<span style='color:var(--gold)'>JACKPOT 🎰</span>";
+                } else if (lastBS === actualBS) {
+                    roundStatusHtml = "<span style='color:var(--green)'>WIN 🦁</span>";
+                } else {
+                    roundStatusHtml = "<span style='color:var(--red)'>এই লও হুগা মারা </span>";
+                }
+                
+                statusEl.innerHTML = roundStatusHtml;
+                updateHistoryLog(currentRoundPeriodStr, actualNum, actualBS, roundStatusHtml);
+            }
+
+            // --- ORIGINAL GAP THEORY ALGORITHM ---
+            let counts = new Array(10).fill(0);
+            list.forEach(x => {
+                let n = parseInt(x.number);
+                if(!isNaN(n)) counts[n]++;
+            });
+            
+            let sortedIndices = counts.map((val, ind) => ({val, ind}))
+                .sort((a, b) => a.val - b.val)
+                .map(obj => obj.ind);
+            
+            let predNums = sortedIndices.slice(0, 3);
+            lastNumbers = predNums;
+            document.getElementById('lucky_numbers').innerText = predNums.join(" , ");
+
+            // অরিজিনাল বিগ/স্মল ট্রেন্ড এনালাইসিস
+            let smallCount = list.slice(0, 10).filter(x => parseInt(x.number) <= 4).length;
+            lastBS = (smallCount >= 5) ? "BIG" : "SMALL";
+            
+            const bsEl = document.getElementById('bs_prediction');
+            bsEl.innerText = lastBS;
+            bsEl.style.color = (lastBS === "BIG") ? "var(--gold)" : "var(--green)";
+
+            // নেক্সট পিরিয়ড জেনারেশন
+            const nextP = (BigInt(lastRound.issueNumber) + 1n).toString();
+            document.getElementById('prd_text').innerText = `PERIOD (${currentMode}): ` + nextP;
+            lastPeriod = nextP;
+
+        } catch (e) { 
+            console.log("Network sync waiting..."); 
+        }
+    }
+</script>
+</body>
+</html>
